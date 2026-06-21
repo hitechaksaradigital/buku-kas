@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface Account {
   id: number;
@@ -26,23 +27,27 @@ export default function TransferModal({ open, onClose, accounts }: TransferModal
     if (!amount || Number(amount) <= 0) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "transfer",
-          amount: Number(amount),
-          fromAccountId,
-          toAccountId,
-          description: notes || "Transfer Antar Kas",
-          date: new Date().toISOString(),
-        }),
+      const { error } = await supabase.from("transactions").insert({
+        type: "transfer",
+        amount: Number(amount),
+        from_account_id: fromAccountId,
+        to_account_id: toAccountId,
+        description: notes || "Transfer Antar Kas",
+        date: new Date().toISOString(),
+        category_id: null,
+        account_id: null,
+        is_recurring: 0,
+        has_attachment: 0,
+        notes: notes || null,
       });
-      if (res.ok) {
+
+      if (!error) {
         setAmount("");
         setNotes("");
         onClose();
         window.location.reload();
+      } else {
+        console.error("Error creating transfer:", error);
       }
     } finally {
       setLoading(false);

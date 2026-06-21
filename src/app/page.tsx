@@ -1,6 +1,8 @@
-import { db } from "@/db";
-import { transactions, categories, accounts } from "@/db/schema";
-import { eq, desc, sql, and, SQL } from "drizzle-orm";
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import MobileNav from "@/components/MobileNav";
@@ -8,109 +10,118 @@ import TransactionFilters from "@/components/TransactionFilters";
 import TransactionTable from "@/components/TransactionTable";
 import PageActions from "@/components/PageActions";
 
-export const dynamic = "force-dynamic";
-
-interface PageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+interface EnrichedTransaction {
+  id: number;
+  date: string;
+  description: string;
+  amount: number;
+  type: "income" | "expense" | "transfer";
+  categoryName: string | null;
+  categoryIcon: string | null;
+  accountName: string | null;
+  isRecurring: number;
+  hasAttachment: number;
+  fromAccountName: string | null;
+  toAccountName: string | null;
 }
 
-export default async function HomePage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const page = Math.max(1, Number(params.page || "1"));
+function TransactionsContent() {
+  const searchParams = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
   const perPage = 10;
   const offset = (page - 1) * perPage;
 
-  const categoryId = typeof params.categoryId === "string" ? params.categoryId : undefined;
-  const accountId = typeof params.accountId === "string" ? params.accountId : undefined;
-  const type = typeof params.type === "string" ? params.type : undefined;
+  const categoryId = searchParams.get("categoryId") || undefined;
+  const accountId = searchParams.get("accountId") || undefined;
+  const type = searchParams.get("type") || undefined;
 
-  const conditions: SQL[] = [];
-  if (categoryId) {
-    conditions.push(eq(transactions.categoryId, Number(categoryId)));
-  }
-  if (accountId) {
-    conditions.push(eq(transactions.accountId, Number(accountId)));
-  }
-  if (type && (type === "income" || type === "expense" || type === "transfer")) {
-    conditions.push(eq(transactions.type, type));
-  }
+  const [transactions, setTransactions] = useState<EnrichedTransaction[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [allAccounts, setAllAccounts] = useState<{ id: number; name: string }[]>([]);
+  const [allCategories, setAllCategories] = useState<{ id: number; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
 
-  const [rows, countResult, allAccounts, allCategories] = await Promise.all([
-    db
-      .select({
-        id: transactions.id,
-        date: transactions.date,
-        description: transactions.description,
-        amount: transactions.amount,
-        type: transactions.type,
-        categoryName: categories.name,
-        categoryIcon: categories.icon,
-        accountName: accounts.name,
-        isRecurring: transactions.isRecurring,
-        hasAttachment: transactions.hasAttachment,
-        fromAccountId: transactions.fromAccountId,
-        toAccountId: transactions.toAccountId,
-      })
-      .from(transactions)
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .leftJoin(accounts, eq(transactions.accountId, accounts.id))
-      .where(whereClause)
-      .orderBy(desc(transactions.date))
-      .limit(perPage)
-      .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(transactions)
-      .where(whereClause),
-    db.select().from(accounts).orderBy(accounts.name),
-    db.select().from(categories).orderBy(categories.name),
-  ]);
+      const [accRes, catRes] = await Promise.all([
+        supabase.from("accounts").select("id, name").order("name"),
+        supabase.from("categories").select("id, name").order("name"),
+      ]);
 
-  // Enrich transfer rows with account names
-  const enrichedRows = await Promise.all(
-    rows.map(async (row) => {
-      let fromAccountName: string | null = null;
-      let toAccountName: string | null = null;
+      const accs = accRes.data ?? [];
+      const cats = catRes.data ?? [];
+      setAllAccounts(accs);
+      setAllCategories(cats);
 
-      if (row.type === "transfer") {
-        if (row.fromAccountId) {
-          const fromAcc = await db
-            .select({ name: accounts.name })
-            .from(accounts)
-            .where(eq(accounts.id, row.fromAccountId))
-            .limit(1);
-          fromAccountName = fromAcc[0]?.name ?? null;
-        }
-        if (row.toAccountId) {
-          const toAcc = await db
-            .select({ name: accounts.name })
-            .from(accounts)
-            .where(eq(accounts.id, row.toAccountId))
-            .limit(1);
-          toAccountName = toAcc[0]?.name ?? null;
-        }
+      let query = supabase
+        .from("transactions")
+        .select("*, categories(name, icon), accounts(name)", { count: "exact" })
+        .order("date", { ascending: false })
+        .range(offset, offset + perPage - 1);
+
+      if (categoryId) query = query.eq("category_id", Number(categoryId));
+      if (accountId) query = query.eq("account_id", Number(accountId));
+      if (type && ["income", "expense", "transfer"].includes(type))
+        query = query.eq("type", type);
+
+      const { data, count, error } = await query;
+
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        setLoading(false);
+        return;
       }
 
-      return {
-        id: row.id,
-        date: row.date.toISOString(),
-        description: row.description,
-        amount: row.amount,
-        type: row.type,
-        categoryName: row.categoryName,
-        categoryIcon: row.categoryIcon,
-        accountName: row.accountName,
-        isRecurring: row.isRecurring,
-        hasAttachment: row.hasAttachment,
-        fromAccountName,
-        toAccountName,
-      };
-    })
-  );
+      const enriched: EnrichedTransaction[] = (data ?? []).map((tx: any) => {
+        const fromAcc = tx.type === "transfer"
+          ? accs.find((a) => a.id === tx.from_account_id)
+          : null;
+        const toAcc = tx.type === "transfer"
+          ? accs.find((a) => a.id === tx.to_account_id)
+          : null;
 
-  const totalCount = countResult[0]?.count ?? 0;
+        return {
+          id: tx.id,
+          date: tx.date,
+          description: tx.description,
+          amount: tx.amount,
+          type: tx.type,
+          categoryName: tx.categories?.name ?? null,
+          categoryIcon: tx.categories?.icon ?? null,
+          accountName: tx.accounts?.name ?? null,
+          isRecurring: tx.is_recurring,
+          hasAttachment: tx.has_attachment,
+          fromAccountName: fromAcc?.name ?? null,
+          toAccountName: toAcc?.name ?? null,
+        };
+      });
+
+      setTransactions(enriched);
+      setTotalCount(count ?? 0);
+      setLoading(false);
+    }
+
+    fetchData();
+  }, [page, categoryId, accountId, type]);
+
+  if (loading) {
+    return (
+      <>
+        <Sidebar />
+        <main className="md:ml-64 min-h-screen flex flex-col pb-20 md:pb-0">
+          <Header />
+          <div className="p-6 max-w-[1280px] mx-auto w-full">
+            <div className="text-center py-12 text-on-surface-variant">
+              Memuat data...
+            </div>
+          </div>
+        </main>
+        <MobileNav />
+      </>
+    );
+  }
 
   return (
     <>
@@ -118,7 +129,6 @@ export default async function HomePage({ searchParams }: PageProps) {
       <main className="md:ml-64 min-h-screen flex flex-col pb-20 md:pb-0">
         <Header />
         <div className="p-6 max-w-[1280px] mx-auto w-full">
-          {/* Page Header & Action Bar */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
               <h2 className="text-[32px] leading-[40px] tracking-[-0.02em] font-bold text-on-surface mb-1">
@@ -128,20 +138,13 @@ export default async function HomePage({ searchParams }: PageProps) {
                 Kelola dan pantau semua arus kas masuk dan keluar bisnis Anda.
               </p>
             </div>
-            <PageActions
-              accounts={allAccounts.map((a) => ({ id: a.id, name: a.name }))}
-            />
+            <PageActions accounts={allAccounts} />
           </div>
 
-          {/* Filters */}
-          <TransactionFilters
-            accounts={allAccounts.map((a) => ({ id: a.id, name: a.name }))}
-            categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
-          />
+          <TransactionFilters accounts={allAccounts} categories={allCategories} />
 
-          {/* Transaction Table */}
           <TransactionTable
-            transactions={enrichedRows}
+            transactions={transactions}
             page={page}
             totalCount={totalCount}
             perPage={perPage}
@@ -150,5 +153,26 @@ export default async function HomePage({ searchParams }: PageProps) {
       </main>
       <MobileNav />
     </>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Sidebar />
+          <main className="md:ml-64 min-h-screen flex flex-col pb-20 md:pb-0">
+            <Header />
+            <div className="p-6 max-w-[1280px] mx-auto w-full">
+              <div className="text-center py-12 text-on-surface-variant">Memuat data...</div>
+            </div>
+          </main>
+          <MobileNav />
+        </>
+      }
+    >
+      <TransactionsContent />
+    </Suspense>
   );
 }

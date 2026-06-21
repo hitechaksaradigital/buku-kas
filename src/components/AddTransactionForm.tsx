@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface Account {
   id: number;
@@ -40,22 +41,26 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
     if (!description || !amount) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          amount: Number(amount),
-          description,
-          date: new Date(date).toISOString(),
-          categoryId: type !== "transfer" && categoryId ? Number(categoryId) : undefined,
-          accountId: type !== "transfer" ? Number(accountId) : undefined,
-          fromAccountId: type === "transfer" ? Number(fromAccountId) : undefined,
-          toAccountId: type === "transfer" ? Number(toAccountId) : undefined,
-        }),
-      });
-      if (res.ok) {
+      const insertData: any = {
+        type,
+        amount: Number(amount),
+        description,
+        date: new Date(date).toISOString(),
+        category_id: type !== "transfer" && categoryId ? Number(categoryId) : null,
+        account_id: type !== "transfer" ? Number(accountId) : null,
+        from_account_id: type === "transfer" ? Number(fromAccountId) : null,
+        to_account_id: type === "transfer" ? Number(toAccountId) : null,
+        is_recurring: 0,
+        has_attachment: 0,
+        notes: null,
+      };
+
+      const { error } = await supabase.from("transactions").insert(insertData);
+
+      if (!error) {
         router.push("/");
+      } else {
+        console.error("Error creating transaction:", error);
       }
     } finally {
       setLoading(false);
@@ -64,7 +69,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
 
   return (
     <form onSubmit={handleSubmit} className="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant shadow-sm max-w-2xl">
-      {/* Transaction Type Selector */}
       <div className="mb-6">
         <label className="text-[14px] leading-[20px] tracking-[0.05em] font-semibold text-on-surface-variant block mb-2">
           Tipe Transaksi
@@ -91,7 +95,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         </div>
       </div>
 
-      {/* Description */}
       <div className="mb-4">
         <label className="text-[14px] leading-[20px] tracking-[0.05em] font-semibold text-on-surface-variant block mb-1">
           Deskripsi
@@ -106,7 +109,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         />
       </div>
 
-      {/* Amount */}
       <div className="mb-4">
         <label className="text-[14px] leading-[20px] tracking-[0.05em] font-semibold text-on-surface-variant block mb-1">
           Nominal
@@ -126,7 +128,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         </div>
       </div>
 
-      {/* Date */}
       <div className="mb-4">
         <label className="text-[14px] leading-[20px] tracking-[0.05em] font-semibold text-on-surface-variant block mb-1">
           Tanggal & Waktu
@@ -139,7 +140,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         />
       </div>
 
-      {/* Category (for income/expense) */}
       {type !== "transfer" && (
         <div className="mb-4">
           <label className="text-[14px] leading-[20px] tracking-[0.05em] font-semibold text-on-surface-variant block mb-1">
@@ -160,7 +160,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         </div>
       )}
 
-      {/* Account (for income/expense) */}
       {type !== "transfer" && (
         <div className="mb-4">
           <label className="text-[14px] leading-[20px] tracking-[0.05em] font-semibold text-on-surface-variant block mb-1">
@@ -180,7 +179,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         </div>
       )}
 
-      {/* Transfer accounts */}
       {type === "transfer" && (
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
@@ -218,7 +216,6 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         </div>
       )}
 
-      {/* Submit */}
       <div className="pt-6 border-t border-outline-variant flex gap-3">
         <button
           type="button"

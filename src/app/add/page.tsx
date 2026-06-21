@@ -1,17 +1,44 @@
-import { db } from "@/db";
-import { accounts, categories } from "@/db/schema";
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import MobileNav from "@/components/MobileNav";
 import AddTransactionForm from "@/components/AddTransactionForm";
 
-export const dynamic = "force-dynamic";
+export default function AddTransactionPage() {
+  const [accounts, setAccounts] = useState<{ id: number; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string; type: string }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function AddTransactionPage() {
-  const [allAccounts, allCategories] = await Promise.all([
-    db.select().from(accounts).orderBy(accounts.name),
-    db.select().from(categories).orderBy(categories.name),
-  ]);
+  useEffect(() => {
+    async function fetchData() {
+      const [accRes, catRes] = await Promise.all([
+        supabase.from("accounts").select("id, name").order("name"),
+        supabase.from("categories").select("id, name, type").order("name"),
+      ]);
+      setAccounts(accRes.data ?? []);
+      setCategories(catRes.data ?? []);
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <>
+        <Sidebar />
+        <main className="md:ml-64 min-h-screen flex flex-col pb-20 md:pb-0">
+          <Header />
+          <div className="p-6 max-w-[1280px] mx-auto w-full">
+            <div className="text-center py-12 text-on-surface-variant">Memuat data...</div>
+          </div>
+        </main>
+        <MobileNav />
+      </>
+    );
+  }
 
   return (
     <>
@@ -27,14 +54,7 @@ export default async function AddTransactionPage() {
               Catat transaksi baru ke dalam buku kas Anda.
             </p>
           </div>
-          <AddTransactionForm
-            accounts={allAccounts.map((a) => ({ id: a.id, name: a.name }))}
-            categories={allCategories.map((c) => ({
-              id: c.id,
-              name: c.name,
-              type: c.type,
-            }))}
-          />
+          <AddTransactionForm accounts={accounts} categories={categories} />
         </div>
       </main>
       <MobileNav />

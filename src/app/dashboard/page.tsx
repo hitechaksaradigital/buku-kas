@@ -1,34 +1,56 @@
-import { db } from "@/db";
-import { transactions, accounts } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import MobileNav from "@/components/MobileNav";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("id-ID").format(amount);
+}
 
-export default async function DashboardPage() {
-  const [allAccounts, incomeResult, expenseResult, txCount] = await Promise.all([
-    db.select().from(accounts).orderBy(accounts.name),
-    db
-      .select({ total: sql<number>`coalesce(sum(amount), 0)::int` })
-      .from(transactions)
-      .where(eq(transactions.type, "income")),
-    db
-      .select({ total: sql<number>`coalesce(sum(amount), 0)::int` })
-      .from(transactions)
-      .where(eq(transactions.type, "expense")),
-    db.select({ count: sql<number>`count(*)::int` }).from(transactions),
-  ]);
+export default function DashboardPage() {
+  const [allAccounts, setAllAccounts] = useState<any[]>([]);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
+  const [totalTx, setTotalTx] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const totalIncome = incomeResult[0]?.total ?? 0;
-  const totalExpense = expenseResult[0]?.total ?? 0;
+  useEffect(() => {
+    async function fetchData() {
+      const [accRes, incomeRes, expenseRes, countRes] = await Promise.all([
+        supabase.from("accounts").select("*").order("name"),
+        supabase.from("transactions").select("amount").eq("type", "income"),
+        supabase.from("transactions").select("amount").eq("type", "expense"),
+        supabase.from("transactions").select("*", { count: "exact", head: true }),
+      ]);
+
+      setAllAccounts(accRes.data ?? []);
+      setTotalIncome(incomeRes.data?.reduce((s: number, t: any) => s + t.amount, 0) ?? 0);
+      setTotalExpense(expenseRes.data?.reduce((s: number, t: any) => s + t.amount, 0) ?? 0);
+      setTotalTx(countRes.count ?? 0);
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
+
   const totalBalance = allAccounts.reduce((sum, a) => sum + a.balance, 0);
-  const totalTx = txCount[0]?.count ?? 0;
 
-  function formatCurrency(amount: number) {
-    return new Intl.NumberFormat("id-ID").format(amount);
+  if (loading) {
+    return (
+      <>
+        <Sidebar />
+        <main className="md:ml-64 min-h-screen flex flex-col pb-20 md:pb-0">
+          <Header />
+          <div className="p-6 max-w-[1280px] mx-auto w-full">
+            <div className="text-center py-12 text-on-surface-variant">Memuat data...</div>
+          </div>
+        </main>
+        <MobileNav />
+      </>
+    );
   }
 
   return (
@@ -46,7 +68,6 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
               <div className="flex items-center gap-3 mb-3">
@@ -105,7 +126,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Accounts */}
           <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
             <h3 className="text-[20px] leading-[28px] font-semibold text-on-surface mb-4">
               Daftar Akun / Kas
