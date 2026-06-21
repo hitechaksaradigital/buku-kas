@@ -24,7 +24,7 @@ export default function MobileNav() {
       <div className="relative -top-6">
         <Link
           href="/add"
-          className="w-14 h-14 bg-green-accent rounded-full flex items-center justify-center text-white shadow-lg border-4 border-surface"
+          className="w-14 h-14 bg-primary-container rounded-full flex items-center justify-center text-white shadow-lg border-4 border-surface"
         >
           <span className="material-symbols-outlined text-[32px]">add</span>
         </Link>

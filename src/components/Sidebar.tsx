@@ -61,7 +61,7 @@ export default function Sidebar() {
       <div className="px-4 mt-auto space-y-2">
         <Link
           href="/add"
-          className="w-full bg-green-accent hover:bg-green-accent-hover text-white py-3 rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold flex items-center justify-center gap-2 mb-6 transition-colors shadow-sm"
+          className="w-full bg-primary-container hover:bg-primary text-white py-3 rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold flex items-center justify-center gap-2 mb-6 transition-colors shadow-sm"
         >
           <span className="material-symbols-outlined">add</span>
           Add Transaction

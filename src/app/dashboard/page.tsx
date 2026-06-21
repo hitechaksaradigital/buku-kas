@@ -64,14 +64,14 @@ export default async function DashboardPage() {
 
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
               <div className="flex items-center gap-3 mb-3">
-                <span className="w-10 h-10 rounded-full bg-secondary-container/20 text-secondary flex items-center justify-center">
+                <span className="w-10 h-10 rounded-full bg-primary-fixed/30 text-primary flex items-center justify-center">
                   <span className="material-symbols-outlined">trending_up</span>
                 </span>
                 <span className="text-[14px] leading-[20px] tracking-[0.05em] font-semibold text-on-surface-variant">
                   Total Pemasukan
                 </span>
               </div>
-              <p className="text-[36px] leading-[44px] tracking-[-0.03em] font-bold text-green-accent">
+              <p className="text-[36px] leading-[44px] tracking-[-0.03em] font-bold text-primary">
                 Rp {formatCurrency(totalIncome)}
               </p>
             </div>
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
           <div className="mt-8 text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-container text-white rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold hover:opacity-90 transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold hover:bg-primary-container transition-all shadow-md"
             >
               <span className="material-symbols-outlined">receipt_long</span>
               Lihat Semua Transaksi

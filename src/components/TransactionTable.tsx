@@ -47,8 +47,8 @@ function getCategoryStyle(type: string) {
   switch (type) {
     case "income":
       return {
-        bgClass: "bg-secondary-container/20",
-        textClass: "text-secondary",
+        bgClass: "bg-primary-fixed/30",
+        textClass: "text-primary",
       };
     case "expense":
       return {
@@ -140,7 +140,7 @@ export default function TransactionTable({
                         {tx.description}
                       </span>
                       {tx.isRecurring === 1 && (
-                        <span className="text-[12px] bg-secondary-container/30 text-secondary px-2 py-0.5 rounded-full w-max flex items-center gap-1">
+                        <span className="text-[12px] bg-primary-fixed/40 text-primary px-2 py-0.5 rounded-full w-max flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">repeat</span>
                           Recurring
                         </span>
@@ -181,7 +181,7 @@ export default function TransactionTable({
                     <span
                       className={`text-[18px] leading-[24px] font-semibold ${
                         tx.type === "income"
-                          ? "text-green-accent"
+                          ? "text-primary"
                           : tx.type === "expense"
                           ? "text-error"
                           : "text-on-surface"

@@ -78,10 +78,10 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
               className={`flex-1 py-3 rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold transition-all ${
                 type === t
                   ? t === "income"
-                    ? "bg-green-accent text-white"
+                    ? "bg-primary text-white"
                     : t === "expense"
                     ? "bg-error text-white"
-                    : "bg-primary text-white"
+                    : "bg-tertiary text-white"
                   : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
               }`}
             >
@@ -230,7 +230,7 @@ export default function AddTransactionForm({ accounts, categories }: AddTransact
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 px-4 py-3 bg-green-accent text-white rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold shadow-md hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-3 bg-primary text-white rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold shadow-md hover:bg-primary-container transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined">save</span>
           {loading ? "Menyimpan..." : "Simpan Transaksi"}

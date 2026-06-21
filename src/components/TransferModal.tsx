@@ -139,7 +139,7 @@ export default function TransferModal({ open, onClose, accounts }: TransferModal
               Batal
             </button>
             <button
-              className="flex-1 px-4 py-3 bg-green-accent text-white rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold shadow-md hover:opacity-90 transition-all disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-primary text-white rounded-xl text-[14px] leading-[20px] tracking-[0.05em] font-semibold shadow-md hover:bg-primary-container transition-all disabled:opacity-50"
               onClick={handleSubmit}
               disabled={loading}
             >
