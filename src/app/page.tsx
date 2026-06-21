@@ -47,17 +47,28 @@ function TransactionsContent() {
 
       const [accRes, catRes] = await Promise.all([
         supabase.from("accounts").select("id, name").order("name"),
-        supabase.from("categories").select("id, name").order("name"),
+        supabase.from("categories").select("id, name, icon").order("name"),
       ]);
+
+      if (accRes.error) {
+        console.error("Error fetching accounts:", accRes.error);
+        setLoading(false);
+        return;
+      }
+      if (catRes.error) {
+        console.error("Error fetching categories:", catRes.error);
+        setLoading(false);
+        return;
+      }
 
       const accs = accRes.data ?? [];
       const cats = catRes.data ?? [];
-      setAllAccounts(accs);
-      setAllCategories(cats);
+      setAllAccounts(accs.map((a) => ({ id: a.id, name: a.name })));
+      setAllCategories(cats.map((c) => ({ id: c.id, name: c.name })));
 
       let query = supabase
         .from("transactions")
-        .select("*, categories(name, icon), accounts(name)", { count: "exact" })
+        .select("*", { count: "exact" })
         .order("date", { ascending: false })
         .range(offset, offset + perPage - 1);
 
@@ -75,6 +86,8 @@ function TransactionsContent() {
       }
 
       const enriched: EnrichedTransaction[] = (data ?? []).map((tx: any) => {
+        const cat = cats.find((c) => c.id === tx.category_id);
+        const acc = accs.find((a) => a.id === tx.account_id);
         const fromAcc = tx.type === "transfer"
           ? accs.find((a) => a.id === tx.from_account_id)
           : null;
@@ -88,9 +101,9 @@ function TransactionsContent() {
           description: tx.description,
           amount: tx.amount,
           type: tx.type,
-          categoryName: tx.categories?.name ?? null,
-          categoryIcon: tx.categories?.icon ?? null,
-          accountName: tx.accounts?.name ?? null,
+          categoryName: cat?.name ?? null,
+          categoryIcon: cat?.icon ?? null,
+          accountName: acc?.name ?? null,
           isRecurring: tx.is_recurring,
           hasAttachment: tx.has_attachment,
           fromAccountName: fromAcc?.name ?? null,

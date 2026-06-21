@@ -1,8 +1,14 @@
 -- ============================================
--- Buku Kas Digital - Supabase Schema
+-- Buku Kas Digital - Supabase Schema + Seed
 -- ============================================
 -- Jalankan di Supabase SQL Editor (Dashboard > SQL Editor)
 -- ============================================
+
+-- Drop existing (urutan penting: transactions duluan karena ada FK)
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS categories CASCADE;
+DROP TABLE IF EXISTS accounts CASCADE;
+DROP TYPE IF EXISTS transaction_type CASCADE;
 
 -- 1. Buat enum untuk tipe transaksi
 CREATE TYPE transaction_type AS ENUM ('income', 'expense', 'transfer');
@@ -40,7 +46,7 @@ CREATE TABLE transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 5. Disable RLS (aplikasi single-user, tanpa auth)
+-- 5. RLS policies (anon key bisa read/write semua data)
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
@@ -53,13 +59,11 @@ CREATE POLICY "Public access transactions" ON transactions FOR ALL USING (true) 
 -- SEED DATA
 -- ============================================
 
--- Akun/Kas
 INSERT INTO accounts (name, balance) VALUES
   ('BCA Business', 45000000),
   ('Kas Tunai', 5000000),
   ('Mandiri Syariah', 12000000);
 
--- Kategori
 INSERT INTO categories (name, icon, type) VALUES
   ('Penjualan', 'payments', 'income'),
   ('Operasional', 'home_work', 'expense'),
@@ -71,7 +75,6 @@ INSERT INTO categories (name, icon, type) VALUES
   ('Marketing', 'campaign', 'expense'),
   ('Pendapatan Lain', 'account_balance', 'income');
 
--- Transaksi (menggunakan id akun & kategori dari seed di atas)
 -- accounts: 1=BCA Business, 2=Kas Tunai, 3=Mandiri Syariah
 -- categories: 1=Penjualan, 2=Operasional, 3=Gaji, 4=Inventaris, 5=Entertainment, 6=Jasa Konsultan, 7=Utilitas, 8=Marketing, 9=Pendapatan Lain
 
@@ -96,3 +99,11 @@ INSERT INTO transactions (date, description, amount, type, category_id, account_
   ('2024-01-07T10:15:00+07:00', 'Biaya Kirim Kurir & Logistik', 180000, 'expense', 2, 2, NULL, NULL, 0, 0),
   ('2024-01-06T12:00:00+07:00', 'Transfer ke Mandiri untuk Deposito', 10000000, 'transfer', NULL, NULL, 1, 3, 0, 0),
   ('2024-01-05T09:30:00+07:00', 'Gaji Karyawan Januari - Batch 2', 15000000, 'expense', 3, 1, NULL, NULL, 1, 0);
+
+-- ============================================
+-- VERIFIKASI (jalankan untuk cek data)
+-- ============================================
+-- SELECT * FROM accounts;
+-- SELECT * FROM categories;
+-- SELECT * FROM transactions;
+-- SELECT count(*) FROM transactions;
